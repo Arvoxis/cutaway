@@ -39,7 +39,9 @@ export const HATCH = [
 export function defs() {
   const pats = HATCH.map(([id, gap]) =>
     `<pattern id="${id}" width="${gap}" height="${gap}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`
-    + `<line x1="0" y1="0" x2="0" y2="${gap}" class="w-thin i22"/></pattern>`).join("");
+    // The line sits at the centre of the tile, not its edge: at x=0 half the
+    // stroke falls outside the tile and the hatch renders as nothing.
+    + `<line x1="${gap / 2}" y1="0" x2="${gap / 2}" y2="${gap}" class="w-thin i22"/></pattern>`).join("");
   const arrow = `<marker id="dep" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">`
     + `<polyline points="1,1 7,4 1,7" class="w-thin i72"/></marker>`;
   return `<defs>${pats}${arrow}</defs>`;
@@ -123,7 +125,10 @@ export function part({ x, y, w, h, label, n, hatch, accent }) {
   const cls = accent ? "part w-thick i1 accent" : "part w-thick i1";
   return `<g class="m">`
     + `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h}" class="${cls}"/>`
-    + (hatch ? `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h}" fill="url(#${hatch})" stroke="none"/>` : "")
+    // Inline style, not a fill attribute: the stylesheet's `rect { fill: none }`
+    // is a CSS rule and silently overrides a presentation attribute, which
+    // cancelled the hatch entirely.
+    + (hatch ? `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h}" style="fill:url(#${hatch});stroke:none"/>` : "")
     + `<text class="t-part i1" x="${(x + w / 2).toFixed(1)}" y="${(y + h / 2 + 3.5).toFixed(1)}" text-anchor="middle">${esc(label)}</text>`
     + `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.5" class="part w-thin i72"/>`
     + `<text class="t-list i72" x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle">${String(n).padStart(2, "0")}</text>`

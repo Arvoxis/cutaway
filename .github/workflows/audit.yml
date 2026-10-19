@@ -1,0 +1,24 @@
+name: audit
+
+on: [push, pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The core pipeline has no dependencies, so there is nothing to install.
+      - name: Resolver tests
+        run: node evals/test-resolve.mjs
+
+      # cutaway draws itself. If the drawing cannot satisfy its own spec on its
+      # own source, it has no business drawing anyone else's.
+      - name: Draw this repository
+        run: |
+          node src/extract.mjs . --out self.graph.json
+          node src/render.mjs self.graph.json self.html
+          node src/audit.mjs self.graph.json

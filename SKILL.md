@@ -2,7 +2,7 @@
 name: cutaway
 description: Draw a repository as an engineering drafting sheet — a single self-contained HTML page showing its real module structure, which parts depend on which, where the import cycles are, and which modules churn most. Use this whenever someone wants to see, explain, document or review the architecture of a codebase: an architecture diagram, a dependency graph, a module map, an onboarding picture of an unfamiliar repo, a figure for a README or a design doc, or an answer to "how is this project put together", "what depends on what here", "where are the import cycles", "what is the hot part of this code". Works on Python and JavaScript/TypeScript repositories.
 license: MIT
-compatibility: Written for Claude Code; also runs in Codex, Gemini CLI, OpenCode and other coding agents. Needs Node.js 20+, and Chrome or Chromium only for the screenshot step.
+compatibility: Written and tested against Claude Code. It is one SKILL.md plus plain Node scripts with no dependencies, so it should work in any agent that reads skills from a directory, though that is untested. Needs Node.js 20+, and Chrome or Chromium only for the screenshot step.
 ---
 
 # cutaway
