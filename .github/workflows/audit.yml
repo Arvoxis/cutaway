@@ -22,3 +22,10 @@ jobs:
           node src/extract.mjs . --out self.graph.json
           node src/render.mjs self.graph.json self.html
           node src/audit.mjs self.graph.json
+
+      # The district overview is what every large repo in the gallery is drawn
+      # at, and it is a different layout, so draw this one both ways.
+      - name: Draw it again, zoomed out
+        run: |
+          node src/render.mjs self.graph.json district.html --level district
+          node src/audit.mjs self.graph.json --level district
