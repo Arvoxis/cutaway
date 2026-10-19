@@ -9,3 +9,6 @@ shots/
 /graph.json
 evals/*.graph.json
 examples/*/graph.json
+
+# Launch notes stay local.
+docs/launch.md
