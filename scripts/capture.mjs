@@ -1,5 +1,12 @@
 // Headless screenshots of a built sheet. Read every PNG before accepting a change.
-import puppeteer from "puppeteer";
+// Imported dynamically so a fresh install fails with one readable line
+// rather than a module-resolution stack trace.
+const puppeteer = await import("puppeteer").then((m) => m.default).catch(() => {
+  console.error("capture needs puppeteer, which the skill does not ship:");
+  console.error("  npm install puppeteer   (in the cutaway directory)");
+  console.error("Everything except the screenshot works without it.");
+  process.exit(1);
+});
 import { mkdirSync } from "node:fs";
 import { resolve, basename } from "node:path";
 

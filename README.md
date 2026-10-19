@@ -96,8 +96,8 @@ corner.
 | Hatching | Churn — tighter hatch, more commits touching it |
 | Red accent | The entry point |
 
-Dashed relations are the useful ones: not every edge inside a cycle, but the
-minimal set whose removal would break every cycle in the repository.
+Dashed relations are the useful ones: not every edge inside a cycle, but a
+set whose removal breaks every cycle in the repository.
 
 ## Two zoom levels
 

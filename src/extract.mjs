@@ -4,9 +4,10 @@
 // ponytail: regex instead of tree-sitter. Import syntax in both languages is
 // regular enough. Swap in web-tree-sitter when a repo shows the regex missing
 // edges that matter.
-import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join, relative, sep } from "node:path";
+// `resolve` is taken by the Python import resolver below, hence `abs`.
+import { join, relative, sep, dirname, resolve as abs, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const SKIP = new Set([
@@ -218,7 +219,9 @@ export function extract(root) {
   });
 
   return {
-    root: root.split(sep).pop(),
+    // Resolved first: the usual invocation passes "." from inside the repo,
+    // and a title block reading "." names nothing.
+    root: basename(abs(root)),
     commit: head(root),
     generatedAt: new Date().toISOString().slice(0, 10),
     nodes, edges,
@@ -230,6 +233,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!repo) { console.error("usage: node src/extract.mjs <repo> [--out graph.json]"); process.exit(1); }
   const g = extract(repo);
   const out = outFlag === "--out" ? outPath : "graph.json";
+  mkdirSync(dirname(out) || ".", { recursive: true });
   writeFileSync(out, JSON.stringify(g, null, 2));
   const byRole = {};
   for (const n of g.nodes) byRole[n.role] = (byRole[n.role] ?? 0) + 1;

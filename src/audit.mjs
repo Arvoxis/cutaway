@@ -20,8 +20,8 @@ function segHitsRect(x1, y1, x2, y2, r) {
   return true;   // routes are axis-aligned, so overlapping extents means a hit
 }
 
-export function audit(graph) {
-  const m = model(graph);
+export function audit(graph, opts = {}) {
+  const m = model(graph, opts);
   const { at, edges, numbered, num, label, regions, dm, flow, sheetW } = m;
   const fail = [];
   const add = (check, detail) => fail.push({ check, detail });
@@ -84,11 +84,21 @@ export function audit(graph) {
   return fail;
 }
 
-const files = process.argv.slice(2);
+const args = process.argv.slice(2);
+// The audit has to check the sheet that was drawn. Pass it the same --level
+// the renderer got, or a forced module-level sheet goes out unchecked while
+// the audit quietly passes a district one.
+const li = args.indexOf("--level");
+const level = li >= 0 ? args[li + 1] : "auto";
+if (!["auto", "module", "district"].includes(level)) {
+  console.error(`unknown --level ${level} (auto | module | district)`);
+  process.exit(1);
+}
+const files = li < 0 ? args : args.filter((_, i) => i !== li && i !== li + 1);
 if (files.length) {
   let total = 0;
   for (const f of files) {
-    const fails = audit(JSON.parse(readFileSync(f, "utf8")));
+    const fails = audit(JSON.parse(readFileSync(f, "utf8")), { level });
     const by = new Map();
     for (const { check } of fails) by.set(check, (by.get(check) ?? 0) + 1);
     const name = f.split(/[\\/]/).pop().replace(".graph.json", "");

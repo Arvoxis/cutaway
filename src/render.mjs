@@ -246,4 +246,11 @@ if (graphPath && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const m = model(g, { level });
   writeFileSync(outPath, render(g, { level }));
   console.log(`wrote ${outPath} (${m.zoom} level, ${m.flow.length} parts)`);
+  // The dashed relations are the most actionable thing on the sheet and are
+  // derived here rather than stored in graph.json. Print them, so a reading
+  // can name them without anyone having to look at a screenshot.
+  const cyc = [...m.cyclic];
+  console.log(cyc.length ? `  ${cyc.length} cyclic relations, drawn dashed:` : "  no import cycles");
+  for (const c of cyc.slice(0, 12)) console.log(`    ${c.replace(" ", " -> ")}`);
+  if (cyc.length > 12) console.log(`    ...and ${cyc.length - 12} more`);
 }
