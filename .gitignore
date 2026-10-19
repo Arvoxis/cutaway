@@ -1,0 +1,11 @@
+node_modules/
+out/
+shots/
+*.log
+.corpus/
+
+# Derived data. scripts/gallery.mjs regenerates every graph.json from the
+# source repository; only the drawn sheets are worth committing.
+/graph.json
+evals/*.graph.json
+examples/*/graph.json

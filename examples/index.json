@@ -1,0 +1,38 @@
+[
+  {
+    "name": "fastapi",
+    "url": "https://github.com/fastapi/fastapi",
+    "modules": 51,
+    "edges": 130
+  },
+  {
+    "name": "flask",
+    "url": "https://github.com/pallets/flask",
+    "modules": 23,
+    "edges": 92
+  },
+  {
+    "name": "requests",
+    "url": "https://github.com/psf/requests",
+    "modules": 20,
+    "edges": 72
+  },
+  {
+    "name": "httpx",
+    "url": "https://github.com/encode/httpx",
+    "modules": 23,
+    "edges": 87
+  },
+  {
+    "name": "axios",
+    "url": "https://github.com/axios/axios",
+    "modules": 78,
+    "edges": 160
+  },
+  {
+    "name": "express",
+    "url": "https://github.com/expressjs/express",
+    "modules": 7,
+    "edges": 7
+  }
+]
