@@ -42,9 +42,12 @@ export function districtMap(ids, { max = 8 } = {}) {
 
 // depth = longest chain of internal dependencies beneath a module.
 // Leaves (import nothing internal) sit at 0 and read as the foundation.
-export function depths(nodes, edges) {
+// Cyclic imports are left out of the chain: they are the edges the sheet
+// draws dashed, and counting them would stack a module above itself.
+export function depths(nodes, edges, back = cyclicEdges(nodes, edges)) {
   const deps = new Map(nodes.map((n) => [n.id, []]));
-  for (const e of edges) deps.get(e.from)?.push(e.to);
+  for (const e of edges)
+    if (!back.has(`${e.from}\u0000${e.to}`)) deps.get(e.from)?.push(e.to);
 
   const depth = new Map(), state = new Map();
   const walk = (id) => {
@@ -195,35 +198,65 @@ export function labels(ids) {
 
 // Which imports actually create the cycles. Marking every edge inside a
 // strongly-connected component is correct but useless -- one big SCC dashes
-// 80-90% of a real sheet. The back edges of a DFS are the minimal set whose
-// removal breaks every cycle, which is the thing a reader can act on.
+// 80-90% of a real sheet. What a reader can act on is a small set whose
+// removal breaks every cycle, so this builds a dependency sequence greedily
+// (Eades-Lin-Smyth) and returns the imports that point backwards in it.
+//
+// A depth-first search's back edges are also such a set, and were what this
+// did, but they are far from the smallest: on rich they dash 103 of 416
+// relations where this dashes 58. The difference is not only ink. Depth is
+// the longest chain left once these are removed, so a bloated feedback set
+// also stretches the sheet -- rich fell from 28 layers to 17 on this change
+// alone, and flask from 16 to 10.
 export function cyclicEdges(nodes, edges) {
-  const succ = new Map(nodes.map((n) => [n.id, []]));
-  for (const e of edges) succ.get(e.from)?.push(e.to);
-
-  const back = new Set(), seen = new Set(), onPath = new Set();
-  for (const root of nodes.map((n) => n.id)) {
-    if (seen.has(root)) continue;
-    const work = [[root, 0]];
-    seen.add(root); onPath.add(root);
-    while (work.length) {
-      const frame = work[work.length - 1];
-      const kids = succ.get(frame[0]) ?? [];
-      if (frame[1] < kids.length) {
-        const w = kids[frame[1]++];
-        if (onPath.has(w)) back.add(`${frame[0]} ${w}`);
-        else if (!seen.has(w)) { seen.add(w); onPath.add(w); work.push([w, 0]); }
-      } else { onPath.delete(frame[0]); work.pop(); }
-    }
+  const ids = nodes.map((n) => n.id);
+  const alive = new Set(ids);
+  const out = new Map(ids.map((i) => [i, []])), inn = new Map(ids.map((i) => [i, []]));
+  const od = new Map(ids.map((i) => [i, 0])), ind = new Map(ids.map((i) => [i, 0]));
+  for (const e of edges) {
+    if (e.from === e.to || !alive.has(e.from) || !alive.has(e.to)) continue;
+    out.get(e.from).push(e.to); inn.get(e.to).push(e.from);
+    od.set(e.from, od.get(e.from) + 1); ind.set(e.to, ind.get(e.to) + 1);
   }
+
+  const drop = (v) => {
+    alive.delete(v);
+    for (const t of out.get(v)) if (alive.has(t)) ind.set(t, ind.get(t) - 1);
+    for (const f of inn.get(v)) if (alive.has(f)) od.set(f, od.get(f) - 1);
+  };
+
+  // Entry points to the front, leaves to the back; when the middle is all
+  // cycle, take the module that imports the most and is imported the least,
+  // because that is the one whose backward imports are fewest.
+  // ponytail: rescans the survivors each peel, O(n^2) on modules in one
+  // repo. A degree-bucketed queue is the upgrade if a sheet gets slow.
+  const head = [], tail = [];
+  while (alive.size) {
+    let peeled = true;
+    while (peeled) {
+      peeled = false;
+      for (const v of [...alive]) if (alive.has(v) && od.get(v) === 0) { tail.unshift(v); drop(v); peeled = true; }
+      for (const v of [...alive]) if (alive.has(v) && ind.get(v) === 0) { head.push(v); drop(v); peeled = true; }
+    }
+    if (!alive.size) break;
+    let best = null, bd = -Infinity;
+    for (const v of alive) { const d = od.get(v) - ind.get(v); if (d > bd) { bd = d; best = v; } }
+    head.push(best); drop(best);
+  }
+
+  const seq = new Map([...head, ...tail].map((v, i) => [v, i]));
+  const back = new Set();
+  for (const e of edges)
+    if (e.from !== e.to && seq.has(e.from) && seq.has(e.to) && seq.get(e.from) >= seq.get(e.to))
+      back.add(`${e.from}\u0000${e.to}`);
   return back;
 }
 
 // Districts as columns, dependency depth as rows. Regions cannot overlap when
 // a district owns a column outright, which is what the craft spec requires and
 // what a free barycentre layout can never guarantee.
-export function columns(nodes, edges, widthOf, { gapX = 16, gapCol = 46, maxPerRow = 5, district } = {}) {
-  const depth = depths(nodes, edges);
+export function columns(nodes, edges, widthOf, { gapX = 16, gapCol = 46, maxPerRow = 5, district, back } = {}) {
+  const depth = depths(nodes, edges, back ?? cyclicEdges(nodes, edges));
   const dm = district ?? districtMap(nodes.map((n) => n.id));
   const byDistrict = new Map();
   for (const n of nodes) {

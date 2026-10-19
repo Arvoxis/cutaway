@@ -41,19 +41,19 @@ export function model(graph, { role = "source", level = "auto" } = {}) {
   const widthOf = (id) => Math.max(58, label.get(id).length * 6.6 + 20);
 
   const dm = districtMap(nodes.map((n) => n.id));
+  const cyclic = cyclicEdges(flow, edges);
   // How many modules a wrapped layer holds decides the sheet's proportions:
   // narrow rows give a tall ribbon, wide rows a letterbox. Try a few and keep
   // whichever lands closest to a landscape sheet.
   const TARGET = 1.3;
   let best = null;
   for (let per = 4; per <= 10; per++) {
-    const c = columns(flow, edges, widthOf, { gapX: GAPX, maxPerRow: per, district: dm });
+    const c = columns(flow, edges, widthOf, { gapX: GAPX, maxPerRow: per, district: dm, back: cyclic });
     const w = c.width + MARGIN * 2, h = MARGIN + 34 + c.slotCount * ROW;
     const score = Math.abs(Math.log((w / h) / TARGET));
     if (!best || score < best.score) best = { c, score };
   }
   const { depth, place, colX, colWidth, order, slotCount, width: drawW } = best.c;
-  const cyclic = cyclicEdges(flow, edges);
 
   // Rows: deepest dependency layer at the bottom, the entry point on top.
   const rowsUsed = [...new Set(flow.map((n) => depth.get(n.id)))].sort((a, b) => b - a);
@@ -118,8 +118,15 @@ export function model(graph, { role = "source", level = "auto" } = {}) {
   for (const d of order) lanes.push(MARGIN + colX.get(d) + colWidth.get(d) + 23);
 
   // Regions: a district owns its column outright, so these cannot overlap.
+  // A district holding nearly every part is the sheet rather than a district:
+  // its dash-dot border runs just inside the frame and doubles it, which is
+  // noise for the same reason a border around a single part is. Drop it and
+  // let the districts that do mark something out carry the structure.
   const regions = order
-    .filter((d) => flow.filter((n) => dm.get(n.id) === d).length > 1)
+    .filter((d) => {
+      const n = flow.filter((x) => dm.get(x.id) === d).length;
+      return n > 1 && n <= flow.length * (2 / 3);
+    })
     .map((d) => {
       const mine = flow.filter((n) => dm.get(n.id) === d).map((n) => at.get(n.id));
       const x = MARGIN + colX.get(d) - 10, w = colWidth.get(d) + 20;
@@ -201,7 +208,7 @@ export function render(graph, opts) {
   const relations = edges.map((e, i) => {
     const a = at.get(e.from), b = at.get(e.to);
     const heavy = e.weight >= 3;
-    const dash = cyclic.has(`${e.from} ${e.to}`) ? ` stroke-dasharray="${K.DASH.cycle}"` : "";
+    const dash = cyclic.has(`${e.from}\u0000${e.to}`) ? ` stroke-dasharray="${K.DASH.cycle}"` : "";
     return `<path d="${pathOf(routePoints(e, a, b, m, i))}"`
       + ` class="${heavy ? "w-med i72" : "w-thin i45"}"${dash} marker-end="url(#dep)"/>`;
   }).join("");
@@ -251,6 +258,6 @@ if (graphPath && import.meta.url === pathToFileURL(process.argv[1]).href) {
   // can name them without anyone having to look at a screenshot.
   const cyc = [...m.cyclic];
   console.log(cyc.length ? `  ${cyc.length} cyclic relation${cyc.length === 1 ? "" : "s"}, drawn dashed:` : "  no import cycles");
-  for (const c of cyc.slice(0, 12)) console.log(`    ${c.replace(" ", " -> ")}`);
+  for (const c of cyc.slice(0, 12)) console.log(`    ${c.replace("\u0000", " -> ")}`);
   if (cyc.length > 12) console.log(`    ...and ${cyc.length - 12} more`);
 }
