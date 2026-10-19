@@ -3,14 +3,27 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { columns, districtMap, labels, cyclicEdges } from "./layout.mjs";
+import { toDistricts } from "./reduce.mjs";
 import * as K from "../kit/sheet.mjs";
 
 const ROW = 92, PARTH = 26, MARGIN = 54, GAPX = 16;
 
-export function model(graph, { role = "source" } = {}) {
-  const nodes = graph.nodes.filter((n) => n.role === role);
-  const ids = new Set(nodes.map((n) => n.id));
-  const edges = graph.edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
+// Past this many modules a module-level sheet stops being a page and becomes
+// a wall poster, so the drawing zooms out to districts instead.
+export const MODULE_LIMIT = 120;
+
+export function model(graph, { role = "source", level = "auto" } = {}) {
+  let nodes = graph.nodes.filter((n) => n.role === role);
+  let ids = new Set(nodes.map((n) => n.id));
+  let edges = graph.edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
+
+  const zoom = level === "auto" ? (nodes.length > MODULE_LIMIT ? "district" : "module") : level;
+  if (zoom === "district") {
+    const moduleCount = nodes.length;
+    ({ nodes, edges } = toDistricts(nodes, edges));
+    ids = new Set(nodes.map((n) => n.id));
+    nodes.moduleCount = moduleCount;
+  }
 
   const degree = new Map(nodes.map((n) => [n.id, 0]));
   for (const e of edges) {
@@ -21,6 +34,10 @@ export function model(graph, { role = "source" } = {}) {
   const flow = nodes.filter((n) => degree.get(n.id) > 0);
   
   const label = labels(nodes.map((n) => n.id));
+  // A district part carries how many modules it stands for; without it the
+  // overview hides exactly the thing that made it necessary.
+  if (zoom === "district")
+    for (const n of nodes) label.set(n.id, `${label.get(n.id)} ×${n.modules}`);
   const widthOf = (id) => Math.max(58, label.get(id).length * 6.6 + 20);
 
   const dm = districtMap(nodes.map((n) => n.id));
@@ -112,7 +129,7 @@ export function model(graph, { role = "source" } = {}) {
     });
 
   return {
-    graph, nodes, edges, flow, isolated, numbered, num, at, label, dm, regions,
+    graph, nodes, edges, flow, isolated, numbered, num, at, label, dm, regions, zoom,
     depth, colX, colWidth, order, rowsUsed, entry, pct,
     cyclic, flowBottom, bodyBottom, sheetW, lanes, portOff,
   };
@@ -166,6 +183,7 @@ export const pathOf = (pts) =>
 
 export function render(graph, opts) {
   const m = model(graph, opts);
+  const { zoom } = m;
   const {
     edges, flow, isolated, numbered, num, at, label, dm,
     order, colX, colWidth, entry, pct, cyclic, flowBottom, bodyBottom, sheetW, rowsUsed, lanes,
@@ -207,17 +225,25 @@ export function render(graph, opts) {
       sheet: "1/1",
       commit: graph.commit,
       date: graph.generatedAt,
-      summary: `${flow.length} parts · ${edges.length} relations · ${rowsUsed.length} layers`
+      summary: (zoom === "district" ? "district overview · " : "")
+        + `${flow.length} parts · ${edges.length} relations · ${rowsUsed.length} layers`
         + (isolated.length ? ` · ${isolated.length} standalone` : ""),
     });
 
   return K.page({ title: `${graph.root} — cutaway`, body, w: sheetW, h: sheetH });
 }
 
-const [, , graphPath, outPath = "out/sheet.html"] = process.argv;
+const [, , graphPath, outPath = "out/sheet.html", ...rest] = process.argv;
 if (graphPath && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const i = rest.indexOf("--level");
+  const level = i >= 0 ? rest[i + 1] : "auto";
+  if (!["auto", "module", "district"].includes(level)) {
+    console.error(`unknown --level ${level} (auto | module | district)`);
+    process.exit(1);
+  }
   const g = JSON.parse(readFileSync(graphPath, "utf8"));
   mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, render(g));
-  console.log(`wrote ${outPath}`);
+  const m = model(g, { level });
+  writeFileSync(outPath, render(g, { level }));
+  console.log(`wrote ${outPath} (${m.zoom} level, ${m.flow.length} parts)`);
 }

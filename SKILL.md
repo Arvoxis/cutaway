@@ -45,6 +45,13 @@ node src/render.mjs graph.json out/sheet.html
 One self-contained HTML file. No network, no build step, both themes inside it
 (cyanotype and vellum, with a toggle in the corner).
 
+It prints which zoom level it drew at. Past 120 modules a module-level sheet
+is unreadably large, so the drawing zooms out by itself to one part per
+district, each labelled with the module count it stands for. Override with
+`--level module` or `--level district` when the reader asked for one
+specifically — someone who wants "the whole thing" on a big repo is asking
+for `--level module`, and should be warned the sheet will be very large.
+
 ### 3. Prove it
 
 ```bash

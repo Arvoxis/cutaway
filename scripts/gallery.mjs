@@ -10,6 +10,9 @@ const REPOS = [
   ["httpx", "https://github.com/encode/httpx"],
   ["axios", "https://github.com/axios/axios"],
   ["express", "https://github.com/expressjs/express"],
+  // Large enough that the sheet zooms out to districts on its own.
+  ["hono", "https://github.com/honojs/hono"],
+  ["zod", "https://github.com/colinhacks/zod"],
 ];
 
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
@@ -27,14 +30,20 @@ for (const [name, url] of REPOS) {
   mkdirSync(dir, { recursive: true });
 
   const summary = run("node", ["src/extract.mjs", repo, "--out", `${dir}/graph.json`]);
-  run("node", ["src/render.mjs", `${dir}/graph.json`, `${dir}/sheet.html`]);
+  const drawnOut = run("node", ["src/render.mjs", `${dir}/graph.json`, `${dir}/sheet.html`]);
   run("node", ["src/audit.mjs", `${dir}/graph.json`]);          // throws if it fails
   run("node", ["scripts/capture.mjs", `${dir}/sheet.html`, dir]);
   renameSync(`${dir}/sheet-sheet.png`, `${dir}/sheet.png`);
 
   const parts = /(\d+) modules, (\d+) edges  <- what the sheet draws/.exec(summary);
-  rows.push({ name, url, modules: +(parts?.[1] ?? 0), edges: +(parts?.[2] ?? 0) });
-  process.stdout.write(`  ${name}: ${parts?.[1]} modules, ${parts?.[2]} relations, audit passed\n`);
+  const drawn = /\((module|district) level, (\d+) parts\)/.exec(drawnOut);
+  rows.push({
+    name, url,
+    modules: +(parts?.[1] ?? 0),
+    level: drawn?.[1] ?? "module",
+    parts: +(drawn?.[2] ?? 0),
+  });
+  process.stdout.write(`  ${name}: ${parts?.[1]} modules -> ${drawn?.[2]} parts (${drawn?.[1]}), audit passed\n`);
 }
 
 writeFileSync("examples/index.json", JSON.stringify(rows, null, 2));

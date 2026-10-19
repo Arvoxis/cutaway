@@ -3,36 +3,56 @@
     "name": "fastapi",
     "url": "https://github.com/fastapi/fastapi",
     "modules": 51,
-    "edges": 130
+    "level": "module",
+    "parts": 41
   },
   {
     "name": "flask",
     "url": "https://github.com/pallets/flask",
     "modules": 23,
-    "edges": 92
+    "level": "module",
+    "parts": 23
   },
   {
     "name": "requests",
     "url": "https://github.com/psf/requests",
     "modules": 20,
-    "edges": 72
+    "level": "module",
+    "parts": 18
   },
   {
     "name": "httpx",
     "url": "https://github.com/encode/httpx",
     "modules": 23,
-    "edges": 87
+    "level": "module",
+    "parts": 23
   },
   {
     "name": "axios",
     "url": "https://github.com/axios/axios",
     "modules": 78,
-    "edges": 160
+    "level": "module",
+    "parts": 70
   },
   {
     "name": "express",
     "url": "https://github.com/expressjs/express",
     "modules": 7,
-    "edges": 7
+    "level": "module",
+    "parts": 7
+  },
+  {
+    "name": "hono",
+    "url": "https://github.com/honojs/hono",
+    "modules": 237,
+    "level": "district",
+    "parts": 22
+  },
+  {
+    "name": "zod",
+    "url": "https://github.com/colinhacks/zod",
+    "modules": 246,
+    "level": "district",
+    "parts": 17
   }
 ]

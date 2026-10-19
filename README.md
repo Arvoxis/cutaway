@@ -30,11 +30,28 @@ as a routed relation, import cycles dashed, churn hatched.
 <td width="50%"><a href="examples/requests/sheet.html"><img src="examples/requests/sheet.png" width="100%" alt="requests"></a><br><sub><b>requests</b> — 18 parts, 72 relations</sub></td>
 <td width="50%"><a href="examples/express/sheet.html"><img src="examples/express/sheet.png" width="100%" alt="express"></a><br><sub><b>express</b> — 7 parts, 7 relations</sub></td>
 </tr>
+<tr>
+<td width="50%"><a href="examples/hono/sheet.html"><img src="examples/hono/sheet.png" width="100%" alt="hono"></a><br><sub><b>hono</b> — 237 modules, drawn as 22 districts</sub></td>
+<td width="50%"><a href="examples/zod/sheet.html"><img src="examples/zod/sheet.png" width="100%" alt="zod"></a><br><sub><b>zod</b> — 246 modules, drawn as 17 districts</sub></td>
+</tr>
 </table>
 
 Every sheet above is generated from the real repository by `scripts/gallery.mjs`,
 not drawn by hand. Two themes ship inside each page — cyanotype and vellum —
 with a toggle in the corner.
+
+## Two zoom levels
+
+A sheet drawn module by module stops being readable somewhere past a hundred
+modules — hono's 237 would be a 4300px wall poster. So above that the drawing
+zooms out on its own: one part per district, each labelled with how many
+modules it stands for, relations carrying the summed import count. hono and
+zod above are drawn this way; everything else is module level.
+
+```bash
+node src/render.mjs graph.json out/sheet.html --level district   # force it
+node src/render.mjs graph.json out/sheet.html --level module     # or override
+```
 
 ## What it is
 
@@ -100,9 +117,9 @@ no drawing.
   dependency injection show no relation between them.
 - **TypeScript path aliases** (`@/x`) are not resolved — a repo leaning on them
   will show fewer relations than it really has.
-- **Large repositories make large sheets.** Around 240 modules the sheet is a
-  wall poster rather than a page; it still draws, and the audit still passes,
-  but you will be zooming.
+- **The district overview is a summary.** Above 120 modules the sheet zooms
+  out, and relations inside a district stop being drawn. Pass
+  `--level module` if you want every module, and expect a very large sheet.
 - **Churn** comes from the last 2000 commits, and is zero outside a git
   repository.
 - Only `source` modules are drawn. Tests, examples, scripts and vendored code
